@@ -15,7 +15,7 @@ function log {
     $m | tee-object $LogFile
 }
 
-log "Script started at $(Get-Date)..."
+log "Script started at $(Get-Date)...Log file is $LogFile"
 
 try {
     log "Domain: $DomainName"
