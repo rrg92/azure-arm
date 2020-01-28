@@ -1,0 +1,583 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+         "adminUsername": {
+            "type": "string"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+
+        ,"adminPassword": {
+            "type": "secureString"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+	
+        ,"NetworkRange": {
+            "type": "string"
+            ,"defaultValue": "5.5.5.0/24"
+			,"metadata": {
+				"description": "Network address range in formart A.B.C.D/N"
+			}
+        }
+
+	
+        ,"IpAD": {
+            "type": "string"
+            ,"defaultValue": "5.5.5.10"
+			,"metadata": {
+				"description": "Ip Address of AD"
+			}
+        }
+
+
+        ,"IpSQL": {
+            "type": "array"
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+
+        ,"SQLDiskCount": {
+            "type": "int"
+            ,"defaultValue": 2
+            ,"minValue": 1
+			,"metadata": {
+				"description": "Nuumber of extra disks for each SQL"
+			}
+        }
+
+
+		
+        ,"ADImagePublisher": {
+            "type": "string"
+            ,"defaultValue": "MicrosoftWindowsServer"
+			,"metadata":{
+				"description": "Image publisher"
+			}
+        }
+
+        ,"ADImageOffer": {
+            "type": "string"
+            ,"defaultValue": "WindowsServer"
+			,"metadata":{
+				"description": "Image offer"
+			}
+        }
+
+        ,"ADImageSku": {
+            "type": "string"
+            ,"defaultValue": "2019-Datacenter"
+			,"metadata":{
+				"description": "Image sku"
+			}
+        }
+
+        ,"ADImageVersion": {
+            "type": "string"
+            ,"defaultValue": "latest"
+			,"metadata":{
+				"description": "Image version"
+			}
+        }
+
+        ,"SQLImagePublisher": {
+            "type": "string"
+            ,"defaultValue": "MicrosoftSQLServer"
+			,"metadata":{
+				"description": "Image publisher"
+			}
+        }
+
+        ,"SQLImageOffer": {
+            "type": "string"
+            ,"defaultValue": "sql2019-ws2019"
+			,"metadata":{
+				"description": "Image offer"
+			}
+        }
+
+        ,"SQLImageSku": {
+            "type": "string"
+            ,"defaultValue": "sqldev"
+			,"metadata":{
+				"description": "Image sku"
+			}
+        }
+
+        ,"SQLImageVersion": {
+            "type": "string"
+            ,"defaultValue": "latest"
+			,"metadata":{
+				"description": "Image version"
+			}
+        }
+
+        ,"osDiskType": {
+            "type": "string"
+			,"defaultValue": "Standard_LRS"
+        }
+		
+        ,"SQLDiskSizeGB": {
+            "type": "int"
+			,"defaultValue": 64
+        }
+
+        ,"AdMachineSize": {
+            "type": "string"
+			,"defaultValue": "Standard_F4s"
+        }
+
+        ,"ADSpotMaxPrice": {
+            "type": "int"
+			,"defaultValue": -1
+        }
+        
+        ,"SQLMachineSize": {
+            "type": "string"
+			,"defaultValue": "Standard_D8s_v3"
+        }
+        
+        ,"SQLSpotMaxPrice": {
+            "type": "int"
+			,"defaultValue": -1
+        }
+    },
+    "variables": {
+		 "BaseName": "[resourceGroup().Name]"
+
+        ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
+        ,"VirtualNetwork-SubNetDefault-Name": "default"
+        ,"SubNetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
+
+        ,"PublicIpSku": "Basic"
+        ,"PublicIpType": "Dynamic"
+        ,"ResourcesLocation": "[resourceGroup().location]"
+
+         
+        ,"AD-PublicIP-Name": "[concat(variables('BaseName'),'-','PIP-AD')]"
+        ,"AD-PublicIP-Id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('AD-PublicIP-Name'))]"
+        ,"AD-InterfacePip": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP-AD')]"
+        ,"AD-InterfacePip-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AD-InterfacePip'))]"
+        ,"AD-DnsName": "[concat(variables('BaseName'),'-','ad')]"
+        ,"AD-InterfaceInternal": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-AD')]"
+        ,"AD-InterfaceInternal-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AD-InterfaceInternal'))]"
+        ,"AD-InternalIP": "[parameters('IpAD')]"
+        ,"AD-MachineName":  "AD"
+        ,"AD-VmName":  "[concat(variables('BaseName'),'-',variables('AD-MachineName'))]"
+        ,"AD-MachineImage": {
+                            "publisher" : "[parameters('ADImagePublisher')]"
+                            ,"offer"    : "[parameters('ADImageOffer')]"
+                            ,"sku"      : "[parameters('ADImageSku')]"
+                            ,"version"  : "[parameters('ADImageVersion')]"
+                        }
+        
+
+        ,"SQLCount": "[length(parameters('IpSQL'))]"
+        ,"SQL-MachineImage": {
+                            "publisher" : "[parameters('SQLImagePublisher')]"
+                            ,"offer"    : "[parameters('SQLImageOffer')]"
+                            ,"sku"      : "[parameters('SQLImageSku')]"
+                            ,"version"  : "[parameters('SQLImageVersion')]"
+                        }
+
+        ,"copy":[
+            
+             {
+                "name": "SQLSingleConfigs"
+                ,"count": "[variables('SQLCount')]"
+                ,"input": {
+                    "PublicIpName": "[concat(variables('BaseName'),'-','PIP-SQL',copyIndex('SQLSingleConfigs',1))]"
+                    ,"PublicIpId": "[resourceId('Microsoft.Network/publicIpAddresses', concat(variables('BaseName'),'-','PIP-SQL',copyIndex('SQLSingleConfigs',1)))]"
+                    ,"InterfacePipName": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP-SQL',copyIndex('SQLSingleConfigs',1))]"
+                    ,"InterfacePipId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-PIP-SQL',copyIndex('SQLSingleConfigs',1)))]"
+                    ,"DnsName": "[concat(variables('BaseName'),'-','sql',copyIndex('SQLSingleConfigs',1))]"
+                    ,"InterfaceInternalName": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-SQL',copyIndex('SQLSingleConfigs',1))]"
+                    ,"InterfaceInternalId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-SQL',copyIndex('SQLSingleConfigs',1)))]"
+                    ,"InternalIP": "[parameters('IpSQL')[copyIndex('SQLSingleConfigs')]]"
+                    ,"MachineName": "[concat('SQL',copyIndex('SQLSingleConfigs',1))]"
+                    ,"VmName":  "[concat(variables('BaseName'),'-','SQL',copyIndex('SQLSingleConfigs',1))]"
+                }
+            }
+
+
+
+            ,{
+                "name": "AllSQLDisks"
+                ,"count": "[mul(variables('SQLCount'),parameters('SQLDiskCount'))]"
+                ,"input": {
+                    "SqlOwner": "[add(div(copyIndex('AllSQLDisks'),parameters('SQLDiskCount')),1)]"
+                    ,"DiskNum": "[add(mod(copyIndex('AllSQLDisks'),parameters('SQLDiskCount')),1)]"
+                    ,"DiskName": "[concat('SQL',add(div(copyIndex('AllSQLDisks'),parameters('SQLDiskCount')),1),'-DISK',add(mod(copyIndex('AllSQLDisks'),parameters('SQLDiskCount')),1))]"
+                }
+            }
+
+
+        
+        ]
+
+
+
+
+    },
+    "resources": [
+        {
+            "apiVersion": "2019-04-01"
+            ,"name": "[variables('VirtualNetwork-Name')]"
+            ,"type": "Microsoft.Network/virtualNetworks"
+            ,"location": "[variables('ResourcesLocation')]"
+            ,"properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('NetworkRange')]"
+                    ]
+                }
+                ,"subnets": [
+                    {
+                        "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
+                        "properties": {
+                            "addressPrefix": "[parameters('NetworkRange')]",
+                            "addressPrefixes": []
+                        }
+                    }
+                ]
+                ,"enableDdosProtection": false
+            }
+        }
+
+        ,{
+            "name": "[variables('AD-PublicIP-Name')]",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "apiVersion": "2019-02-01",
+            "location": "[variables('ResourcesLocation')]",
+            "properties": {
+                "publicIpAllocationMethod": "[variables('PublicIpType')]"
+                ,"dnsSettings": {
+                        "domainNameLabel": "[variables('AD-DnsName')]"
+                        }
+            },
+            "sku": {
+                "name": "[variables('PublicIpSku')]"
+            }
+        }
+        ,{
+            "name": "[variables('SQLSingleConfigs')[copyIndex()].PublicIpName]",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "apiVersion": "2019-02-01",
+            "location": "[variables('ResourcesLocation')]",
+            "properties": {
+                "publicIpAllocationMethod": "[variables('PublicIpType')]"
+                ,"dnsSettings": {
+                        "domainNameLabel": "[variables('SQLSingleConfigs')[copyIndex()].DnsName]"
+                        }
+            },
+            "sku": {
+                "name": "[variables('PublicIpSku')]"
+            }
+
+            ,"copy":{
+                 "name": "SQLPublicIpLoop"
+                ,"count": "[variables('SQLCount')]"
+            }
+        }
+
+
+
+
+
+        ,{
+            "name": "[variables('AD-InterfacePip')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('AD-PublicIP-Name')]"
+                ,"[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigPip"
+                        ,"properties": {
+                            "privateIPAllocationMethod": "Dynamic"
+                            ,"publicIpAddress": {
+                                "id": "[variables('AD-PublicIP-Id')]"
+                            }
+                            ,"subnet": {
+                                    "id": "[variables('SubNetID')]"
+                                }
+                        }
+                    }
+                ]
+            }
+        }
+        ,{
+            "name": "[variables('AD-InterfaceInternal')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigInternal"
+                        ,"properties": {
+                            "subnet": {
+                                "id": "[variables('SubNetID')]"
+                            }
+                            ,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('AD-InternalIP')]"
+                        }
+                    }
+                ]
+            }
+        }
+
+
+        ,{
+            "name": "[variables('SQLSingleConfigs')[copyIndex()].InterfacePipName]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "SQLPublicIpLoop"
+                ,"[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigPip"
+                        ,"properties": {
+                            "privateIPAllocationMethod": "Dynamic"
+                            ,"publicIpAddress": {
+                                "id": "[variables('SQLSingleConfigs')[copyIndex()].PublicIpId]"
+                            }
+                            ,"subnet": {
+                                    "id": "[variables('SubNetID')]"
+                                }
+                        }
+                    }
+                ]
+            }
+
+            ,"copy":{
+                 "name": "SQLInterfacePipLoop"
+                ,"count": "[variables('SQLCount')]"
+            }
+        }
+        ,{
+            "name": "[variables('SQLSingleConfigs')[copyIndex()].InterfaceInternalName]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigInternal"
+                        ,"properties": {
+                            "subnet": {
+                                "id": "[variables('SubNetID')]"
+                            }
+                            ,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].InternalIP]"
+                        }
+                    }
+                ]
+                ,"dnsSettings":{
+                    "dnsServers":[
+                        "[variables('AD-InternalIP')]"
+                    ]
+                }
+            }
+
+            ,"copy":{
+                 "name": "SQLInterfaceInternalLoop"
+                ,"count": "[variables('SQLCount')]"
+            }
+        }
+
+
+
+
+
+        
+        ,{
+            "name": "[variables('AllSQLDisks')[copyIndex()].DiskName]",
+            "type": "Microsoft.Compute/disks",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "properties": {
+                        "diskSizeGB": "[parameters('SQLDiskSizeGB')]",
+                        "creationData": {
+                            "createOption": "empty"
+						}
+					}
+            ,"sku": {
+                "name": "Standard_LRS"
+            }
+            ,"copy":{
+                "name": "SQLExtraDiskLoop"
+                ,"count": "[length(variables('AllSQLDisks'))]"
+            }
+        }
+
+
+    
+        ,{
+            "name": "[variables('AD-VmName')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('AD-InterfaceInternal')]"
+                ,"[variables('AD-InterfacePip')]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('AdMachineSize')]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('osDiskType')]"
+                        }
+                    }
+                    ,"imageReference": "[variables('AD-MachineImage')]"
+                }
+
+               ,"networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[variables('AD-InterfacePip-Id')]"
+                            ,"properties": {
+                                "primary": true
+                            }
+                        }
+                        ,{
+                            "id": "[variables('AD-InterfaceInternal-Id')]"
+                            ,"properties": {
+                                "primary": false
+                            }
+                        }
+                    ]
+                }
+                
+                ,"osProfile": {
+                     "computerName": "[variables('AD-MachineName')]"
+                    ,"adminUsername": "[parameters('adminUsername')]"
+                    ,"adminPassword": "[parameters('adminPassword')]"
+                    ,"windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true
+                    }
+                }
+                
+                ,"priority": "Spot"
+                ,"evictionPolicy": "Deallocate"
+                ,"billingProfile": {
+                    "maxPrice": "[parameters('ADSpotMaxPrice')]"
+                }
+            }
+        }
+        
+        
+
+        ,{
+            "name": "[variables('SQLSingleConfigs')[copyIndex()].VmName]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "SQLInterfaceInternalLoop"
+                ,"SQLInterfacePipLoop"
+                ,"SQLExtraDiskLoop"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('SQLMachineSize')]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('osDiskType')]"
+                        }
+                    }
+                    ,"imageReference": "[variables('SQL-MachineImage')]"
+                    ,"copy": [{
+                             "name": "dataDisks"
+                            ,"count": "[parameters('SQLDiskCount')]"
+							,"input": {
+                                "lun": "[copyIndex('dataDisks')]",
+                                "createOption": "attach",
+                                "caching": "ReadOnly",
+                                "writeAcceleratorEnabled": false,
+                                "diskSizeGB": "[parameters('SQLDiskSizeGB')]"
+                                ,"managedDisk": {
+                                    "storageAccountType": "[parameters('osDiskType')]"
+                                    ,"id": "[resourceId('Microsoft.Compute/disks', concat('SQL',copyIndex('SQLVmLoop',1),'-DISK',copyIndex('dataDisks',1)))]"
+                                }
+                            }
+                       }]
+                }
+
+               ,"networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[variables('SQLSingleConfigs')[copyIndex()].InterfacePipId]"
+                            ,"properties": {
+                                "primary": true
+                            }
+                        }
+                        ,{
+                            "id": "[variables('SQLSingleConfigs')[copyIndex()].InterfaceInternalId]"
+                            ,"properties": {
+                                "primary": false
+                            }
+                        }
+                    ]
+                }
+                
+                ,"osProfile": {
+                     "computerName": "[variables('SQLSingleConfigs')[copyIndex()].MachineName]"
+                    ,"adminUsername": "[parameters('adminUsername')]"
+                    ,"adminPassword": "[parameters('adminPassword')]"
+                    ,"windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true
+                    }
+                }
+                
+                ,"priority": "Spot"
+                ,"evictionPolicy": "Deallocate"
+                ,"billingProfile": {
+                    "maxPrice": "[parameters('SQLSpotMaxPrice')]"
+                }
+            }
+
+            ,"copy":{
+                 "name": "SQLVmLoop"
+                ,"count": "[variables('SQLCount')]"
+            }
+        }
+
+
+
+    ],
+    "outputs": {
+        "adminUsername": {
+            "type": "string",
+            "value": "[parameters('adminUsername')]"
+        }
+    }
+}

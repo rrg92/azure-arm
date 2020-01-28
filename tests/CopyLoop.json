@@ -1,0 +1,68 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+    ,"contentVersion": "1.0.0.0"
+    ,"parameters": {
+         "IpSQL": {
+            "type": "array"
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+
+        ,"ExtraDiskCount": {
+            "type": "int"
+            ,"defaultValue": 2
+            ,"minValue": 1
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+    }
+    ,"variables": {
+        "SQLCount": "[length(parameters('IpSQL'))]"
+
+
+        ,"copy":[
+            {
+                "name": "AllExtraDisks"
+                ,"count": "[mul(variables('SQLCount'),parameters('ExtraDiskCount'))]"
+                ,"input": {
+                    "owner": "[add(div(copyIndex('AllExtraDisks'),parameters('ExtraDiskCount')),1)]"
+                    ,"name": "[add(mod(copyIndex('AllExtraDisks'),parameters('ExtraDiskCount')),1)]"
+                }
+            }
+
+            ,{
+                "name": "AllExtraDisks2"
+                ,"count": "[length('AllExtraDisks')]"
+                ,"input": {
+                    "owner": "[variables('AllExtraDisks').copy]"
+                    ,"name": "[add(mod(copyIndex('AllExtraDisks'),parameters('ExtraDiskCount')),1)]"
+                }
+            }
+
+            ,{
+                "name": "DiskNames"
+                ,"count": "[length(variables('AllExtraDisks'))]"
+                ,"input": "[variables('AllExtraDisks')[copyIndex('DiskNames')].owner]"
+            }
+        
+        
+        ]
+
+
+
+    }
+    ,"resources": [
+
+     
+    ]
+    ,"outputs": {
+        "disks": {
+            "type": "array",
+            "value": "[variables('AllExtraDisks')]"
+        }
+    }
+}
+
