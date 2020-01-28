@@ -62,20 +62,22 @@ https://docs.microsoft.com/en-us/azure/templates/microsoft.compute/2019-07-01/vi
 
 * Passo a passo para encontrar uma imagem  (você precisará procurar em uma região específica)
 
-    1. Encontre um `publsher`
-    Get-AzVMImagePublisher -Location $locName | Select PublisherName
+```posh
 
-    2. Encontre uma `offer` de um `publisher`
-    Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
+#1. Encontre um `publsher`  
+Get-AzVMImagePublisher -Location $locName | Select PublisherName
 
-    3. Encontra uma `SKU`
-    Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
+#2. Encontre uma `offer` de um `publisher`
+Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
 
-    4. Encontra uma versão da SKU (a imagem propriamente em si)
-    Get-AzVMImage -Location $locName -PublisherName $pubName -Offer $offerName -Sku $skuName | Select Version
+#3. Encontra uma `SKU`
+Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
 
-        **Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
+#4. Encontra uma versão da SKU (a imagem propriamente em si)
+Get-AzVMImage -Location $locName -PublisherName $pubName -Offer $offerName -Sku $skuName | Select Version
 
+    **Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
+```
     
 Por Exemplo, no caso de uma imagem SQL Server:
 
