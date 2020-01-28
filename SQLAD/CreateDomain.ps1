@@ -1,4 +1,8 @@
-param($DomainName = $Env:AD_DOMAIN_NAME, $SafePassword = $Env:AD_SAFE_PASSWORD)
+param(
+    $DomainName = $Env:AD_DOMAIN_NAME
+    , $SafePassword = $Env:AD_SAFE_PASSWORD
+    ,[switch]$NoExitCode
+)
 
 $ErrorActionPreference = "Stop";
 $LogFile = "$PsScriptRoot.log"
@@ -40,7 +44,7 @@ try {
     $SecureStringSafePassword = ConvertTo-SecureString -String $SafePassword -AsPlainText -Force;
 
     $AdForestParams = @{
-        CreateDnsDelegation     = $true
+        CreateDnsDelegation     = $false
         DatabasePath            = 'C:\Windows\NTDS'
         DomainMode              = 'Win2012R2'
         DomainName              = $DomainName
@@ -56,6 +60,12 @@ try {
 
     Log "Installing forest...";
     Install-ADDSForest @AdForestParams;
+    $ExitCode = 0;
 } catch {
-    log "Fail: $_";
+    $ExitCode = 1;
+    log "INSTALL FOREST FAIL: $_";
+} finally {
+    if(!$NoExitCode){
+        exit $ExitCode
+    }
 }

@@ -76,8 +76,8 @@ Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | 
 #4. Encontra uma versão da SKU (a imagem propriamente em si)
 Get-AzVMImage -Location $locName -PublisherName $pubName -Offer $offerName -Sku $skuName | Select Version
 
-    **Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
 ```
+**Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
     
 Por Exemplo, no caso de uma imagem SQL Server:
 

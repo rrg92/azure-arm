@@ -1,0 +1,259 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+         "adminUsername": {
+            "type": "string"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+
+        ,"adminPassword": {
+            "type": "secureString"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+	
+
+		
+        ,"ImagePublisher": {
+            "type": "string"
+            ,"defaultValue": "MicrosoftWindowsServer"
+			,"metadata":{
+				"description": "Image publisher"
+			}
+        }
+
+        ,"ImageOffer": {
+            "type": "string"
+            ,"defaultValue": "WindowsServer"
+			,"metadata":{
+				"description": "Image offer"
+			}
+        }
+
+        ,"ImageSku": {
+            "type": "string"
+            ,"defaultValue": "2019-Datacenter"
+			,"metadata":{
+				"description": "Image sku"
+			}
+        }
+
+        ,"ImageVersion": {
+            "type": "string"
+            ,"defaultValue": "latest"
+			,"metadata":{
+				"description": "Image version"
+			}
+        }
+
+        ,"osDiskType": {
+            "type": "string"
+			,"defaultValue": "Standard_LRS"
+        }
+	
+
+        ,"MachineSize": {
+            "type": "string"
+			,"defaultValue": "Standard_F4s"
+        }
+
+        ,"SpotMaxPrice": {
+            "type": "int"
+			,"defaultValue": -1
+        }
+    },
+    "variables": {
+		 "BaseName": "[resourceGroup().Name]"
+
+        ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
+        ,"VirtualNetwork-SubNetDefault-Name": "default"
+        ,"SubNetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
+        ,"NetworkRange": "5.0.0.0/8"
+
+        ,"PublicIpSku": "Basic"
+        ,"PublicIpType": "Dynamic"
+        ,"ResourcesLocation": "[resourceGroup().location]"
+
+         
+        ,"PublicIP-Name": "[concat(variables('BaseName'),'-','PIP')]"
+        ,"PublicIP-Id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('PublicIP-Name'))]"
+        ,"InterfacePip": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP')]"
+        ,"InterfacePip-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('InterfacePip'))]"
+        ,"DnsName": "[concat(variables('BaseName'),'-','ad')]"
+        ,"MachineName":  "RODRIGO"
+        ,"VmName":  "[concat(variables('BaseName'),'-',variables('MachineName'))]"
+        ,"MachineImage": {
+                            "publisher" : "[parameters('ImagePublisher')]"
+                            ,"offer"    : "[parameters('ImageOffer')]"
+                            ,"sku"      : "[parameters('ImageSku')]"
+                            ,"version"  : "[parameters('ImageVersion')]"
+                        }
+
+    },
+    "resources": [
+        {
+            "apiVersion": "2019-04-01"
+            ,"name": "[variables('VirtualNetwork-Name')]"
+            ,"type": "Microsoft.Network/virtualNetworks"
+            ,"location": "[variables('ResourcesLocation')]"
+            ,"properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('NetworkRange')]"
+                    ]
+                }
+                ,"subnets": [
+                    {
+                        "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('NetworkRange')]",
+                            "addressPrefixes": []
+                        }
+                    }
+                ]
+                ,"enableDdosProtection": false
+            }
+        }
+
+        // Create public ip
+        ,{
+            "name": "[variables('PublicIP-Name')]",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "apiVersion": "2019-02-01",
+            "location": "[variables('ResourcesLocation')]",
+            "properties": {
+                "publicIpAllocationMethod": "[variables('PublicIpType')]"
+                ,"dnsSettings": {
+                        "domainNameLabel": "[variables('DnsName')]"
+                        }
+            },
+            "sku": {
+                "name": "[variables('PublicIpSku')]"
+            }
+        }
+
+
+        // Create the interface
+        ,{
+            "name": "[variables('InterfacePip')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('PublicIP-Name')]"
+                ,"[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigPip"
+                        ,"properties": {
+                            "privateIPAllocationMethod": "Dynamic"
+                            ,"publicIpAddress": {
+                                "id": "[variables('PublicIP-Id')]"
+                            }
+                            ,"subnet": {
+                                    "id": "[variables('SubNetID')]"
+                                }
+                        }
+                    }
+                ]
+            }
+        }
+
+    
+        ,{
+            "name": "[variables('VmName')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('InterfacePip')]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('MachineSize')]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('osDiskType')]"
+                        }
+                    }
+                    ,"imageReference": "[variables('MachineImage')]"
+                }
+
+               ,"networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[variables('InterfacePip-Id')]"
+                            ,"properties": {
+                                "primary": true
+                            }
+                        }
+                    ]
+                }
+                
+                ,"osProfile": {
+                     "computerName": "[variables('MachineName')]"
+                    ,"adminUsername": "[parameters('adminUsername')]"
+                    ,"adminPassword": "[parameters('adminPassword')]"
+                    ,"windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true
+                    }
+                }
+                
+                ,"priority": "Spot"
+                ,"evictionPolicy": "Deallocate"
+                ,"billingProfile": {
+                    "maxPrice": "[parameters('SpotMaxPrice')]"
+                }
+            }
+
+            ,"resources": [
+                    {
+                        "apiVersion": "2015-06-15",
+                        "type": "extensions",
+                        "name": "sample-powershell",
+                        "location": "[variables('ResourcesLocation')]",
+                        "dependsOn": [
+                            "[variables('VmName')]"
+                        ],
+                    "tags": {
+                        "displayName": "Testing-Powershell"
+                    },
+                    "properties": {
+                        "publisher": "Microsoft.Compute",
+                        "type": "CustomScriptExtension",
+                        "typeHandlerVersion": "1.4",
+                        "autoUpgradeMinorVersion": true,
+                        "settings": {
+                            "fileUris": [
+                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/SQLAD/CreateDomain.ps1"
+                            ]
+                        },
+                        "protectedSettings": {
+                            "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File CreateDomain.ps1 -DomainName rrg.corp -SafePassword RodrigoRibeiro@2020"
+                            }
+                        }
+                    }
+            ]
+
+        }
+
+
+
+    ],
+    "outputs": {
+        "ScriptOutput": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/extensions',variables('VmName'),'sample-powershell')).instanceView]"
+        }
+    }
+}
