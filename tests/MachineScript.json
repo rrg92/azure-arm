@@ -83,7 +83,7 @@
         ,"PublicIP-Id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('PublicIP-Name'))]"
         ,"InterfacePip": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP')]"
         ,"InterfacePip-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('InterfacePip'))]"
-        ,"DnsName": "[concat(variables('BaseName'),'-','ad')]"
+        ,"DnsName": "[concat(variables('BaseName'),'-','RODRIGO')]"
         ,"MachineName":  "RODRIGO"
         ,"VmName":  "[concat(variables('BaseName'),'-',variables('MachineName'))]"
         ,"MachineImage": {

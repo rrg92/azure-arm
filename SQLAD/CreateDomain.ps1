@@ -60,6 +60,7 @@ try {
 
     Log "Installing forest...";
     Install-ADDSForest @AdForestParams;
+    log "SUCCESS!"
     $ExitCode = 0;
 } catch {
     $ExitCode = 1;
