@@ -39,7 +39,7 @@ Consulte o help para mais informações!
 # Regiões do Azure (location parameter)
 
 Muitos dos parâmetros no template envolvem especificar uma região, geralmente através do nome `location`.  
-Você pode usar a seguinte referência para saber mais sobre as regiões:
+Você pode usar a seguinte referência para saber mais sobre as regiões:  
 https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell
 
 O seguinte comando também pode ser útil:
@@ -53,37 +53,36 @@ Get-AzLocation
 As imagens especificam qual é o sistema operacional que vai rodar em uma determinada máquina!
 É interessante aprender como o Azure organiza estas imagens. Aqui uma referência e alguns links úteis
 
-    * Conceitos
-    https://docs.microsoft.com/en-us/azure/virtual-machines/windows/cli-ps-findimage
+* Conceitos  
+https://docs.microsoft.com/en-us/azure/virtual-machines/windows/cli-ps-findimage
+
+* Objeto `imageReference` (referência ARM template)  
+https://docs.microsoft.com/en-us/azure/templates/microsoft.compute/2019-07-01/virtualmachines#ImageReference
 
 
-    * Objeto `imageReference` (referência ARM template)  
-    https://docs.microsoft.com/en-us/azure/templates/microsoft.compute/2019-07-01/virtualmachines#ImageReference
+* Passo a passo para encontrar uma imagem  (você precisará procurar em uma região específica)
 
+    1. Encontre um `publsher`
+    Get-AzVMImagePublisher -Location $locName | Select PublisherName
 
-    * Passo a passo para encontrar uma imagem  (você precisará procurar em uma região específica)
+    2. Encontre uma `offer` de um `publisher`
+    Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
 
-        1. Encontre um `publsher`
-        Get-AzVMImagePublisher -Location $locName | Select PublisherName
+    3. Encontra uma `SKU`
+    Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
 
-        2. Encontre uma `offer` de um `publisher`
-        Get-AzVMImageOffer -Location $locName -PublisherName $pubName | Select Offer
+    4. Encontra uma versão da SKU (a imagem propriamente em si)
+    Get-AzVMImage -Location $locName -PublisherName $pubName -Offer $offerName -Sku $skuName | Select Version
 
-        3. Encontra uma `SKU`
-        Get-AzVMImageSku -Location $locName -PublisherName $pubName -Offer $offerName | Select Skus
-
-        4. Encontra uma versão da SKU (a imagem propriamente em si)
-        Get-AzVMImage -Location $locName -PublisherName $pubName -Offer $offerName -Sku $skuName | Select Version
-
-            **Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
+        **Dica**: Geralmente especificando o nome `latest` na versão, você referencia a última versão daquele SKU.
 
     
-    Por Exemplo, no caso de uma imagem SQL Server:
+Por Exemplo, no caso de uma imagem SQL Server:
 
-    * O publisher é MicrosoftSQLServer
-    * A offer é a versão e sistema operacional, por exemplo SQL Server 2019, em um Wndows Server 2019 (o nome da offer é `sql2019-ws2019`)
-    * A SKU é a edição (developer, enterprise, etc.). Por exemplo, para a offer `sql2019-ws2019`, temos uma SKU `sqldev` (SQL Serverloper)
-    * A imagem é a versão sql 2019 developer com algum cumulative update aplicado. Geralmente será o build number 15.XX.YYYY (consulte sempre com os comandos acima para obter um valor atualizado)
+* O publisher é MicrosoftSQLServer
+* A offer é a versão e sistema operacional, por exemplo SQL Server 2019, em um Wndows Server 2019 (o nome da offer é `sql2019-ws2019`)
+* A SKU é a edição (developer, enterprise, etc.). Por exemplo, para a offer `sql2019-ws2019`, temos uma SKU `sqldev` (SQL Serverloper)
+* A imagem é a versão sql 2019 developer com algum cumulative update aplicado. Geralmente será o build number 15.XX.YYYY (consulte sempre com os comandos acima para obter um valor atualizado)
 
 [módulo do Azure]: https://docs.microsoft.com/en-us/powershell/azure/install-az-ps
 [Test-AzResourceGroupDeployment]: https://docs.microsoft.com/en-us/powershell/module/az.resources/test-azresourcegroupdeployment?view=azps-3.3.0
