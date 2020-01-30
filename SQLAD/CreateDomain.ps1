@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop";
 $LogFile = "$PsScriptRoot.log"
 
 function log {
-    $ts 	= (Get-Date).ToString("yyyy-MM-SS HH:mm:ss")
+    $ts 	= (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     $m	= "$ts " + ($Args -Join " ");
 
     
