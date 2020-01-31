@@ -30,6 +30,24 @@ try {
 
     log "Domain: $Domain Computers: $Computers";
 
+    #wait for domain!
+    function WaitConnection($ip,$ports,$seconds = 120){
+
+        $start = Get-Date;
+
+        while( ((Get-Date) - $start).TotalSeconds -lt $seconds  ) {
+            
+            if($ports | ? {  -not(Test-NetConnection $ip -port $_ -InformationLevel Quiet) } ){
+                Start-Sleep -s 1;
+                continue;
+            } else {
+                return $true;
+            }
+        } 
+        
+        return $false;
+    }
+
     #Get the first part!
     $DomainParts = $Domain.split('.');
     $DomainNetBios = $DomainParts[0].ToUpper();
@@ -52,7 +70,11 @@ try {
     log "Local user: $FullDomainUser";
 
     log "Invoking add computer..."
-    Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
+    if(WaitConnection $Domain 3389,88,135 500){
+        Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
+    } else {
+        throw "AD_CONNECTION_UNAVAIL";
+    }
     log "SUCCESS!"
 } catch {
     $ExitCode = 1;
