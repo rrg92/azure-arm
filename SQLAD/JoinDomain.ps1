@@ -33,7 +33,6 @@ try {
     #Get the first part!
     $DomainParts = $Domain.split('.');
     $DomainNetBios = $DomainParts[0].ToUpper();
-    $FullDomainUser = "$DomainNetBios\$DomainUser"
 
     $UserSecPasswod = ConvertTo-SecureString $Password -AsPlainText -Force
     $LocalCredential = New-Object System.Management.Automation.PSCredential ($User, $UserSecPasswod)
@@ -47,6 +46,7 @@ try {
         $DomainPassword = $Password
     }
 
+    $FullDomainUser = "$DomainNetBios\$DomainUser"
     $DomainSecPasswod = ConvertTo-SecureString $DomainPassword  -AsPlainText -Force
     $DomainCredential = New-Object System.Management.Automation.PSCredential ($FullDomainUser, $DomainSecPasswod)
     log "Local user: $FullDomainUser";
