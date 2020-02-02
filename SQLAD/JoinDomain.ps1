@@ -73,14 +73,14 @@ try {
     if(WaitConnection $Domain 3389,88,135 500){
         while($true){
             try {
-               Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
+               Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName 'rrg2.corp' -Credential $DomainCredential -Restart -Force;
                break;
             } catch {
-                $ErrorMsg = $_.Message;
+                $ErrorMsg = $_.Exception.Message;
 
                 if($ErrorMsg -like "*The specified domain either does not exist or could not be contacted*"){
                     log "Waiting domain become available!"
-                    Start-Sleep -m 1;
+                    Start-Sleep -s 60;
                     continue;
                 } else {
                     throw;
