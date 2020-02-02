@@ -73,7 +73,7 @@ try {
     if(WaitConnection $Domain 3389,88,135 500){
         while($true){
             try {
-               Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName 'rrg2.corp' -Credential $DomainCredential -Restart -Force;
+               Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
                break;
             } catch {
                 $ErrorMsg = $_.Exception.Message;
