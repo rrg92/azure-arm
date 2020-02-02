@@ -9,14 +9,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop";
-$LogFile = "$PsScriptRoot.log"
+$LogFile = "$PSCommandPath.log"
 
 function log {
     $ts 	= (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     $m	= "$ts " + ($Args -Join " ");
 
     
-    $m | tee-object $LogFile
+    $m | tee-object $LogFile -Append
 }
 
 log "Script started at $(Get-Date)...Log file is $LogFile"
