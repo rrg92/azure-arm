@@ -71,10 +71,26 @@ try {
 
     log "Invoking add computer..."
     if(WaitConnection $Domain 3389,88,135 500){
-        Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
+        while($true){
+            try {
+               Add-Computer -ComputerName $Computers -LocalCredential $LocalCredential -DomainName $Domain -Credential $DomainCredential -Restart -Force;
+               break;
+            } catch {
+                $ErrorMsg = $_.Message;
+
+                if($ErrorMsg -like "*The specified domain either does not exist or could not be contacted*"){
+                    log "Waiting domain become available!"
+                    Start-Sleep -m 1;
+                    continue;
+                } else {
+                    throw;
+                }
+            }
+        }
     } else {
         throw "AD_CONNECTION_UNAVAIL";
     }
+
     log "SUCCESS!"
 } catch {
     $ExitCode = 1;
