@@ -15,6 +15,13 @@
 				"description": "Default admin user name"
 			}
         }
+
+        ,"DomainName": {
+            "type": "string"
+			,"metadata":{
+				"description": "The domain name to create"
+			}
+        }
 	
         ,"NetworkRange": {
             "type": "string"
@@ -184,6 +191,10 @@
                             ,"sku"      : "[parameters('SQLImageSku')]"
                             ,"version"  : "[parameters('SQLImageVersion')]"
                         }
+
+        ,"PsCreateDomain": "[concat('powershell -ExecutionPolicy Unrestricted -File CreateDomain.ps1 -DomainName ',parameters('DomainName'),' -SafePassword ',parameters('adminPassword'))]"
+        ,"PsJoinDomain": "[concat('powershell -ExecutionPolicy ByPass -File JoinDomain.ps1 -Computers localhost -Domain ',parameters('DomainName'),' -User ',parameters('adminUsername'),' -Password ',parameters('adminPassword'))]"
+       
 
         ,"copy":[
             
@@ -488,6 +499,35 @@
                     "maxPrice": "[parameters('ADSpotMaxPrice')]"
                 }
             }
+
+            ,"resources": [
+                    {
+                        "apiVersion": "2015-06-15",
+                        "type": "extensions",
+                        "name": "powershell-CreateDomain",
+                        "location": "[variables('ResourcesLocation')]",
+                        "dependsOn": [
+                            "[variables('AD-VmName')]"
+                        ],
+                    "tags": {
+                        "displayName": "Domain Creation"
+                    },
+                    "properties": {
+                        "publisher": "Microsoft.Compute",
+                        "type": "CustomScriptExtension",
+                        "typeHandlerVersion": "1.4",
+                        "autoUpgradeMinorVersion": true,
+                        "settings": {
+                            "fileUris": [
+                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/SQLAD/CreateDomain.ps1"
+                            ]
+                        },
+                        "protectedSettings": {
+                            "commandToExecute": "[variables('PsCreateDomain')]"
+                            }
+                        }
+                    }
+            ]
         }
         
         
@@ -501,6 +541,7 @@
                 "SQLInterfaceInternalLoop"
                 ,"SQLInterfacePipLoop"
                 ,"SQLExtraDiskLoop"
+                ,"[resourceId('Microsoft.Compute/virtualMachines/extensions',variables('AD-VmName'),'powershell-CreateDomain')]"
             ],
             "properties": {
                 "hardwareProfile": {
@@ -565,6 +606,36 @@
                 }
             }
 
+
+            ,"resources": [
+                    {
+                        "apiVersion": "2015-06-15",
+                        "type": "extensions",
+                        "name": "powershell-JoinDomain",
+                        "location": "[variables('ResourcesLocation')]",
+                        "dependsOn": [
+                            "[variables('SQLSingleConfigs')[copyIndex()].VmName]"
+                        ],
+                    "tags": {
+                        "displayName": "Join to Domain"
+                    },
+                    "properties": {
+                        "publisher": "Microsoft.Compute",
+                        "type": "CustomScriptExtension",
+                        "typeHandlerVersion": "1.4",
+                        "autoUpgradeMinorVersion": true,
+                        "settings": {
+                            "fileUris": [
+                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/SQLAD/JoinDomain.ps1"
+                            ]
+                        },
+                        "protectedSettings": {
+                            "commandToExecute": "[variables('PsJoinDomain')]"
+                            }
+                        }
+                    }
+            ]
+
             ,"copy":{
                  "name": "SQLVmLoop"
                 ,"count": "[variables('SQLCount')]"
@@ -575,9 +646,10 @@
 
     ],
     "outputs": {
-        "adminUsername": {
-            "type": "string",
-            "value": "[parameters('adminUsername')]"
+        "ADResults": {
+            "type": "object",
+            "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/extensions',variables('AD-VmName'),'powershell-CreateDomain')).instanceView]"
         }
+
     }
 }

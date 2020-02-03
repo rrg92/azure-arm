@@ -1,0 +1,307 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+         "adminUsername": {
+            "type": "string"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+
+        ,"adminPassword": {
+            "type": "secureString"
+			,"metadata":{
+				"description": "Default admin user name"
+			}
+        }
+
+
+        ,"Ips": {
+            "type": "array"
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+			,"metadata": {
+				"description": "Number of ips. For each ip, a machine will be created!"
+			}
+        }
+	
+        ,"NetworkRange": {
+            "type": "string"
+            ,"defaultValue": "5.0.0.0/8"
+			,"metadata": {
+				"description": "Default range"
+			}
+        }
+		
+        ,"ImagePublisher": {
+            "type": "string"
+            ,"defaultValue": "MicrosoftWindowsServer"
+			,"metadata":{
+				"description": "Image publisher"
+			}
+        }
+
+        ,"ImageOffer": {
+            "type": "string"
+            ,"defaultValue": "WindowsServer"
+			,"metadata":{
+				"description": "Image offer"
+			}
+        }
+
+        ,"ImageSku": {
+            "type": "string"
+            ,"defaultValue": "2019-Datacenter"
+			,"metadata":{
+				"description": "Image sku"
+			}
+        }
+
+        ,"ImageVersion": {
+            "type": "string"
+            ,"defaultValue": "latest"
+			,"metadata":{
+				"description": "Image version"
+			}
+        }
+
+        ,"osDiskType": {
+            "type": "string"
+			,"defaultValue": "Standard_LRS"
+        }
+	
+
+        ,"MachineSize": {
+            "type": "string"
+			,"defaultValue": "Standard_F4s"
+        }
+
+        ,"SpotMaxPrice": {
+            "type": "int"
+			,"defaultValue": -1
+        }
+    },
+    "variables": {
+		 "BaseName": "[resourceGroup().Name]"
+
+        ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
+        ,"VirtualNetwork-SubNetDefault-Name": "default"
+        ,"SubNetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
+        ,"NetworkRange": "[parameters('NetworkRange')]"
+
+        ,"PublicIpSku": "Basic"
+        ,"PublicIpType": "Dynamic"
+        ,"ResourcesLocation": "[resourceGroup().location]"
+        ,"VmCount": "[length(parameters('Ips'))]"
+
+       ,"copy":[
+            
+             {
+                "name": "SingleConfig"
+                ,"count": "[variables('VmCount')]"
+                ,"input": {
+                    "PublicIpName": "[concat(variables('BaseName'),'-','PIP',copyIndex('SingleConfig',1))]"
+                    ,"PublicIpId": "[resourceId('Microsoft.Network/publicIpAddresses', concat(variables('BaseName'),'-','PIP',copyIndex('SingleConfig',1)))]"
+                    ,"InterfacePipName": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP',copyIndex('SingleConfig',1))]"
+                    ,"InterfacePipId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-PIP',copyIndex('SingleConfig',1)))]"
+                    ,"DnsName": "[concat(variables('BaseName'),'-','vm',copyIndex('SingleConfig',1))]"
+                    ,"InterfaceInternalName": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL',copyIndex('SingleConfig',1))]"
+                    ,"InterfaceInternalId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL',copyIndex('SingleConfig',1)))]"
+                    ,"InternalIP": "[parameters('Ips')[copyIndex('SingleConfig')]]"
+                    ,"MachineName": "[concat('VM',copyIndex('SingleConfig',1))]"
+                    ,"VmName":  "[concat(variables('BaseName'),'-','VM',copyIndex('SingleConfig',1))]"
+                }
+            }
+       ]
+
+        ,"MachineImage": {
+                            "publisher" : "[parameters('ImagePublisher')]"
+                            ,"offer"    : "[parameters('ImageOffer')]"
+                            ,"sku"      : "[parameters('ImageSku')]"
+                            ,"version"  : "[parameters('ImageVersion')]"
+                        }
+
+    },
+    "resources": [
+        {
+            "apiVersion": "2019-04-01"
+            ,"name": "[variables('VirtualNetwork-Name')]"
+            ,"type": "Microsoft.Network/virtualNetworks"
+            ,"location": "[variables('ResourcesLocation')]"
+            ,"properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('NetworkRange')]"
+                    ]
+                }
+                ,"subnets": [
+                    {
+                        "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('NetworkRange')]",
+                            "addressPrefixes": []
+                        }
+                    }
+                ]
+                ,"enableDdosProtection": false
+            }
+        }
+
+        // Create public ip
+        ,{
+            "name": "[variables('SingleConfig')[copyIndex()].PublicIpName]",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "apiVersion": "2019-02-01",
+            "location": "[variables('ResourcesLocation')]",
+            "properties": {
+                "publicIpAllocationMethod": "[variables('PublicIpType')]"
+                ,"dnsSettings": {
+                        "domainNameLabel": "[variables('SingleConfig')[copyIndex()].DnsName]"
+                        }
+            },
+            "sku": {
+                "name": "[variables('PublicIpSku')]"
+            }
+
+            ,"copy":{
+                 "name": "PublicIpLoop"
+                ,"count": "[variables('VmCount')]"
+            }
+        }
+
+
+        // Create the public interfaces
+        ,{
+            "name": "[variables('SingleConfig')[copyIndex()].InterfacePipName]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "PublicIpLoop"
+                ,"[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigPip"
+                        ,"properties": {
+                            "privateIPAllocationMethod": "Dynamic"
+                            ,"publicIpAddress": {
+                                "id": "[variables('SingleConfig')[copyIndex()].PublicIpId]"
+                            }
+                            ,"subnet": {
+                                    "id": "[variables('SubNetID')]"
+                                }
+                        }
+                    }
+                ]
+            }
+
+            ,"copy":{
+                 "name": "InterfacePipLoop"
+                ,"count": "[variables('VmCount')]"
+            }
+        }
+
+        //Create internal interfaces
+         ,{
+            "name": "[variables('SingleConfig')[copyIndex()].InterfaceInternalName]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "[variables('VirtualNetwork-Name')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConfigInternal"
+                        ,"properties": {
+                            "subnet": {
+                                "id": "[variables('SubNetID')]"
+                            }
+                            ,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('SingleConfig')[copyIndex()].InternalIP]"
+                        }
+                    }
+                ]
+            }
+
+            ,"copy":{
+                 "name": "InterfaceInternalLoop"
+                ,"count": "[variables('VmCount')]"
+            }
+        }
+
+
+        // VM creation loop
+        ,{
+            "name": "[variables('SingleConfig')[copyIndex()].VmName]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "location": "[variables('ResourcesLocation')]",
+            "dependsOn": [
+                "InterfaceInternalLoop"
+                ,"InterfacePipLoop"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('MachineSize')]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('osDiskType')]"
+                        }
+                    }
+                    ,"imageReference": "[variables('MachineImage')]"
+                }
+
+               ,"networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[variables('SingleConfig')[copyIndex()].InterfacePipId]"
+                            ,"properties": {
+                                "primary": true
+                            }
+                        }
+                        ,{
+                            "id": "[variables('SingleConfig')[copyIndex()].InterfaceInternalId]"
+                            ,"properties": {
+                                "primary": false
+                            }
+                        }
+                    ]
+                }
+                
+                ,"osProfile": {
+                     "computerName": "[variables('SingleConfig')[copyIndex()].MachineName]"
+                    ,"adminUsername": "[parameters('adminUsername')]"
+                    ,"adminPassword": "[parameters('adminPassword')]"
+                    ,"windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true
+                    }
+                }
+                
+                ,"priority": "Spot"
+                ,"evictionPolicy": "Deallocate"
+                ,"billingProfile": {
+                    "maxPrice": "[parameters('SpotMaxPrice')]"
+                }
+            }
+
+            ,"copy":{
+                 "name": "VmLoop"
+                ,"count": "[variables('VmCount')]"
+            }
+        }
+    ]
+
+    ,"outputs": {
+        "Machine Created": {
+            "type": "array"
+            ,"value": "[variables('SingleConfig')]"
+    }
+}
