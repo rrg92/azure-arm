@@ -143,6 +143,12 @@
             "type": "int"
 			,"defaultValue": -1
         }
+
+        ,"ADMachinePriority": {
+            "type": "string"
+            ,"defaultValue": "Spot"
+            ,"allowedValues": ["Spot","Regular"]
+        }
         
         ,"SQLMachineSize": {
             "type": "string"
@@ -152,6 +158,12 @@
         ,"SQLSpotMaxPrice": {
             "type": "int"
 			,"defaultValue": -1
+        }
+
+        ,"SQLMachinePriority": {
+            "type": "string"
+            ,"defaultValue": "Spot"
+            ,"allowedValues": ["Spot","Regular"]
         }
     },
     "variables": {
@@ -164,6 +176,10 @@
         ,"PublicIpSku": "Basic"
         ,"PublicIpType": "Dynamic"
         ,"ResourcesLocation": "[resourceGroup().location]"
+
+        ,"BillingProfile":{
+            "maxPrice": -1
+        }
 
          
         ,"AD-PublicIP-Name": "[concat(variables('BaseName'),'-','PIP-AD')]"
@@ -493,11 +509,9 @@
                     }
                 }
                 
-                ,"priority": "Spot"
-                ,"evictionPolicy": "Deallocate"
-                ,"billingProfile": {
-                    "maxPrice": "[parameters('ADSpotMaxPrice')]"
-                }
+                ,"priority": "[parameters('ADMachinePriority')]"
+                ,"evictionPolicy": "[if(equals(parameters('ADMachinePriority'),'Spot'),'Deallocate','')]"
+                ,"billingProfile": "[if(equals(parameters('ADMachinePriority'),'Spot'),variables('BillingProfile'),json('null'))]"
             }
 
             ,"resources": [
@@ -599,11 +613,9 @@
                     }
                 }
                 
-                ,"priority": "Spot"
-                ,"evictionPolicy": "Deallocate"
-                ,"billingProfile": {
-                    "maxPrice": "[parameters('SQLSpotMaxPrice')]"
-                }
+                ,"priority": "[parameters('SQLMachinePriority')]"
+                ,"evictionPolicy": "[if(equals(parameters('SQLMachinePriority'),'Spot'),'Deallocate','')]"
+                ,"billingProfile": "[if(equals(parameters('SQLMachinePriority'),'Spot'),variables('BillingProfile'),json('null'))]"
             }
 
 
