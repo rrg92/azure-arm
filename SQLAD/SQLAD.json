@@ -19,22 +19,22 @@
         ,"DomainName": {
             "type": "string"
 			,"metadata":{
-				"description": "The domain name to create"
+				"description": "The domain name to create. DO NOT USE top level domains! Examples: example.corp, contoso.com, lab.com.br"
 			}
         }
 	
         ,"NetworkRange": {
             "type": "string"
-            ,"defaultValue": "5.5.5.0/24"
+            ,"defaultValue": "10.0.0.0/24"
 			,"metadata": {
-				"description": "Network address range in formart A.B.C.D/N"
+				"description": "Network address range in format A.B.C.D/N"
 			}
         }
 
 	
         ,"IpAD": {
             "type": "string"
-            ,"defaultValue": "5.5.5.10"
+            ,"defaultValue": "10.0.0.10"
 			,"metadata": {
 				"description": "Ip Address of AD"
 			}
@@ -43,7 +43,7 @@
 
         ,"IpSQL": {
             "type": "array"
-            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+            ,"defaultValue": ["10.0.0.11","10.0.0.12"]
 			,"metadata": {
 				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
 			}
@@ -78,7 +78,7 @@
 
         ,"ADImageSku": {
             "type": "string"
-            ,"defaultValue": "2019-Datacenter"
+            ,"defaultValue": "2019-Datacenter-Core"
 			,"metadata":{
 				"description": "Image sku"
 			}
@@ -126,9 +126,12 @@
 
         ,"osDiskType": {
             "type": "string"
-			,"defaultValue": "Standard_LRS"
+            ,"defaultValue": "Standard_LRS"
+            ,"allowedValues": ["Standard_LRS","Standard_GRS","Standard_RAGRS","Standard_ZRS"
+								,"Premium_LRS","Premium_ZRS","Standard_GZRS","Standard_RAGZRS"
+							]
         }
-		
+
         ,"SQLDiskSizeGB": {
             "type": "int"
 			,"defaultValue": 64
@@ -136,7 +139,7 @@
 
         ,"AdMachineSize": {
             "type": "string"
-			,"defaultValue": "Standard_F4s"
+			,"defaultValue": "Standard_A2_v2"
         }
 
         ,"ADSpotMaxPrice": {
@@ -152,7 +155,7 @@
         
         ,"SQLMachineSize": {
             "type": "string"
-			,"defaultValue": "Standard_D8s_v3"
+			,"defaultValue": "Standard_D4s_v3"
         }
         
         ,"SQLSpotMaxPrice": {
@@ -170,9 +173,17 @@
 		 "BaseName": "[resourceGroup().Name]"
 
         ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
+		
         ,"VirtualNetwork-SubNetDefault-Name": "default"
-        ,"SubNetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
-
+		,"SubNetDefaultID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
+		,"NetworkRangeDefault": "192.168.0.0/24"
+		  
+        ,"VirtualNetwork-SubNetCustom-Name": "custom"
+        ,"SubNetCustomID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetCustom-Name'))]"
+	    ,"NetworkRangeCustom": "[parameters('NetworkRange')]"
+	   
+	   
+	   
         ,"PublicIpSku": "Basic"
         ,"PublicIpType": "Dynamic"
         ,"ResourcesLocation": "[resourceGroup().location]"
@@ -190,6 +201,7 @@
         ,"AD-InterfaceInternal": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-AD')]"
         ,"AD-InterfaceInternal-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AD-InterfaceInternal'))]"
         ,"AD-InternalIP": "[parameters('IpAD')]"
+        ,"AD-DefaultSubNetIP": "192.168.0.10"
         ,"AD-MachineName":  "AD"
         ,"AD-VmName":  "[concat(variables('BaseName'),'-',variables('AD-MachineName'))]"
         ,"AD-MachineImage": {
@@ -228,6 +240,7 @@
                     ,"InternalIP": "[parameters('IpSQL')[copyIndex('SQLSingleConfigs')]]"
                     ,"MachineName": "[concat('SQL',copyIndex('SQLSingleConfigs',1))]"
                     ,"VmName":  "[concat(variables('BaseName'),'-','SQL',copyIndex('SQLSingleConfigs',1))]"
+					,"IpDefaultSubNet":  "[concat('192.168.0.',add(10,copyIndex('SQLSingleConfigs',1)))]"
                 }
             }
 
@@ -260,18 +273,28 @@
             ,"properties": {
                 "addressSpace": {
                     "addressPrefixes": [
-                        "[parameters('NetworkRange')]"
+                        "[variables('NetworkRangeDefault')]"
+						,"[variables('NetworkRangeCustom')]"
                     ]
                 }
                 ,"subnets": [
-                    {
+					{
                         "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
                         "properties": {
-                            "addressPrefix": "[parameters('NetworkRange')]",
-                            "addressPrefixes": []
+                            "addressPrefix": "[variables('NetworkRangeDefault')]"
+
+                        }
+                    }
+                    ,{
+                        "name": "[variables('VirtualNetwork-SubNetCustom-Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('NetworkRangeCustom')]"
+
                         }
                     }
                 ]
+				
+				
                 ,"enableDdosProtection": false
             }
         }
@@ -330,13 +353,14 @@
                     {
                         "name": "IpConfigPip"
                         ,"properties": {
-                            "privateIPAllocationMethod": "Dynamic"
+							"subnet": {
+                                    "id": "[variables('SubNetDefaultID')]"
+                                }
+							,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('AD-DefaultSubNetIP')]"
                             ,"publicIpAddress": {
                                 "id": "[variables('AD-PublicIP-Id')]"
                             }
-                            ,"subnet": {
-                                    "id": "[variables('SubNetID')]"
-                                }
                         }
                     }
                 ]
@@ -356,7 +380,7 @@
                         "name": "IpConfigInternal"
                         ,"properties": {
                             "subnet": {
-                                "id": "[variables('SubNetID')]"
+                                "id": "[variables('SubNetCustomID')]"
                             }
                             ,"privateIPAllocationMethod": "Static"
                             ,"privateIPAddress": "[variables('AD-InternalIP')]"
@@ -381,13 +405,14 @@
                     {
                         "name": "IpConfigPip"
                         ,"properties": {
-                            "privateIPAllocationMethod": "Dynamic"
+                           "subnet": {
+                                    "id": "[variables('SubNetDefaultID')]"
+                                }
+							,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].IpDefaultSubNet]"
                             ,"publicIpAddress": {
                                 "id": "[variables('SQLSingleConfigs')[copyIndex()].PublicIpId]"
                             }
-                            ,"subnet": {
-                                    "id": "[variables('SubNetID')]"
-                                }
                         }
                     }
                 ]
@@ -412,7 +437,7 @@
                         "name": "IpConfigInternal"
                         ,"properties": {
                             "subnet": {
-                                "id": "[variables('SubNetID')]"
+                                "id": "[variables('SubNetCustomID')]"
                             }
                             ,"privateIPAllocationMethod": "Static"
                             ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].InternalIP]"

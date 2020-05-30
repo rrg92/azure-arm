@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "value": "rodrigo"
+    },
+    "adminPassword": {
+      "value": ""
+    },
+    "Ips": {
+      "value": [
+        "5.5.5.11",
+        "5.5.5.12"
+      ]
+    },
+    "NetworkRange": {
+      "value": "5.0.0.0/8"
+    },
+    "ImagePublisher": {
+      "value": "MicrosoftSQLServer"
+    },
+    "ImageOffer": {
+      "value": "sql2019-ws2019"
+    },
+    "ImageSku": {
+      "value": "sqldev"
+    },
+    "ImageVersion": {
+      "value": "latest"
+    },
+    "osDiskType": {
+      "value": "Standard_LRS"
+    },
+    "MachineSize": {
+      "value": "Standard_F4s"
+    },
+    "SpotMaxPrice": {
+      "value": -1
+    },
+    "MachinePriority": {
+      "value": "Regular"
+    }
+  }
+}
