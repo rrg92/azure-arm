@@ -1,0 +1,76 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+    ,"contentVersion": "1.0.0.0"
+    ,"parameters": {
+         "IpSQL": {
+            "type": "array"
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+
+        ,"ExtraDiskCount": {
+            "type": "int"
+            ,"defaultValue": 2
+            ,"minValue": 1
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+    }
+    ,"variables": {
+        "AllSubnets":{
+			 "default":{
+					"copy":[{
+						 "name":"defaults"
+						,"count": 5
+						,"input": {
+							"name": "[string(copyIndex('defaults'))]"
+                            ,"properties":{
+                                "addressPrefix": "[copyIndex('defaults')]"
+                            }
+						}
+					}]
+				}
+
+                ,"custom":[
+                        {
+                             "name": "custom"
+                            ,"properties": {
+                                "addressPrefix":"custom"  
+                            }
+                        }
+                ]
+	   }
+    
+
+	
+        ,"AllSubnetArray": "[concat(variables('AllSubnets').default.defaults,variables('AllSubnets').custom)]"
+
+       ,"AllSubnetPrefixes": {
+            "copy":[{
+                "name": "Subnets"
+                ,"count": "[length(variables('AllSubnetArray'))]"
+                ,"input": "[variables('AllSubnetArray')[copyIndex('Subnets')].properties.addressPrefix]"
+            }]
+       }
+
+        ,"Len": "[length(variables('AllSubnetArray'))]"
+
+
+    }
+
+	
+    ,"resources": [
+
+     
+    ]
+    ,"outputs": {
+        "result": {
+            "type": "array",
+            "value": ["[variables('Len')]","[variables('AllSubnetArray')]","[variables('AllSubnetPrefixes')]"]
+        }
+    }
+}
+

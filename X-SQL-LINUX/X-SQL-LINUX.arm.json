@@ -19,7 +19,7 @@
 
         ,"Ips": {
             "type": "array"
-            ,"defaultValue": ["10.0.0.11","10.0.0.12"]
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
 			,"metadata": {
 				"description": "Number of ips. For each ip, a machine will be created!"
 			}
@@ -27,16 +27,15 @@
 	
         ,"NetworkRange": {
             "type": "string"
-            ,"defaultValue": "10.0.0.0/8"
+            ,"defaultValue": "5.0.0.0/8"
 			,"metadata": {
 				"description": "Default range"
 			}
         }
 		
-		
         ,"ImagePublisher": {
             "type": "string"
-            ,"defaultValue": "MicrosoftWindowsServer"
+            ,"defaultValue": "Canonical"
 			,"metadata":{
 				"description": "Image publisher"
 			}
@@ -44,7 +43,7 @@
 
         ,"ImageOffer": {
             "type": "string"
-            ,"defaultValue": "WindowsServer"
+            ,"defaultValue": "UbuntuServer"
 			,"metadata":{
 				"description": "Image offer"
 			}
@@ -52,7 +51,7 @@
 
         ,"ImageSku": {
             "type": "string"
-            ,"defaultValue": "2019-Datacenter"
+            ,"defaultValue": "16.04.0-LTS"
 			,"metadata":{
 				"description": "Image sku"
 			}
@@ -68,16 +67,13 @@
 
         ,"osDiskType": {
             "type": "string"
-            ,"defaultValue": "Standard_LRS"
-            ,"allowedValues": ["Standard_LRS","Standard_GRS","Standard_RAGRS","Standard_ZRS"
-								,"Premium_LRS","Premium_ZRS","Standard_GZRS","Standard_RAGZRS"
-							]
+			,"defaultValue": "Standard_LRS"
         }
 	
 
         ,"MachineSize": {
             "type": "string"
-			,"defaultValue": "Standard_D4s_v3"
+			,"defaultValue": "Standard_F4s"
         }
 
         ,"SpotMaxPrice": {
@@ -96,16 +92,9 @@
 		 "BaseName": "[resourceGroup().Name]"
 
         ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
-		
-		
         ,"VirtualNetwork-SubNetDefault-Name": "default"
-		,"SubNetDefaultID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
-		  ,"NetworkRangeDefault": "192.168.0.0/24"
-		  
-        ,"VirtualNetwork-SubNetCustom-Name": "custom"
-        ,"SubNetCustomID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetCustom-Name'))]"
-	   ,"NetworkRangeCustom": "[parameters('NetworkRange')]"
-        
+        ,"SubNetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
+        ,"NetworkRange": "[parameters('NetworkRange')]"
 
         ,"PublicIpSku": "Basic"
         ,"PublicIpType": "Dynamic"
@@ -132,11 +121,9 @@
                     ,"InternalIP": "[parameters('Ips')[copyIndex('SingleConfig')]]"
                     ,"MachineName": "[concat('VM',copyIndex('SingleConfig',1))]"
                     ,"VmName":  "[concat(variables('BaseName'),'-','VM',copyIndex('SingleConfig',1))]"
-					,"IpDefaultSubNet":  "[concat('192.168.0.',add(10,copyIndex('SingleConfig',1)))]"
                 }
             }
        ]
-	   
 
         ,"MachineImage": {
                             "publisher" : "[parameters('ImagePublisher')]"
@@ -155,23 +142,15 @@
             ,"properties": {
                 "addressSpace": {
                     "addressPrefixes": [
-                        "[variables('NetworkRangeDefault')]"
-						,"[variables('NetworkRangeCustom')]"
+                        "[variables('NetworkRange')]"
                     ]
                 }
                 ,"subnets": [
-					{
+                    {
                         "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
                         "properties": {
-                            "addressPrefix": "[variables('NetworkRangeDefault')]"
-
-                        }
-                    }
-                    ,{
-                        "name": "[variables('VirtualNetwork-SubNetCustom-Name')]",
-                        "properties": {
-                            "addressPrefix": "[variables('NetworkRangeCustom')]"
-
+                            "addressPrefix": "[variables('NetworkRange')]",
+                            "addressPrefixes": []
                         }
                     }
                 ]
@@ -217,14 +196,13 @@
                     {
                         "name": "IpConfigPip"
                         ,"properties": {
-                           "subnet": {
-                                    "id": "[variables('SubNetDefaultID')]"
-                                }
-							,"privateIPAllocationMethod": "Static"
-                            ,"privateIPAddress": "[variables('SingleConfig')[copyIndex()].IpDefaultSubNet]"
+                            "privateIPAllocationMethod": "Dynamic"
                             ,"publicIpAddress": {
                                 "id": "[variables('SingleConfig')[copyIndex()].PublicIpId]"
                             }
+                            ,"subnet": {
+                                    "id": "[variables('SubNetID')]"
+                                }
                         }
                     }
                 ]
@@ -251,7 +229,7 @@
                         "name": "IpConfigInternal"
                         ,"properties": {
                             "subnet": {
-                                "id": "[variables('SubNetCustomID')]"
+                                "id": "[variables('SubNetID')]"
                             }
                             ,"privateIPAllocationMethod": "Static"
                             ,"privateIPAddress": "[variables('SingleConfig')[copyIndex()].InternalIP]"
@@ -311,10 +289,7 @@
                      "computerName": "[variables('SingleConfig')[copyIndex()].MachineName]"
                     ,"adminUsername": "[parameters('adminUsername')]"
                     ,"adminPassword": "[parameters('adminPassword')]"
-                    ,"windowsConfiguration": {
-                        "enableAutomaticUpdates": true,
-                        "provisionVmAgent": true
-                    }
+                    ,"linuxConfiguration": {}
                 }
                 
 

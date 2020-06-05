@@ -1,0 +1,53 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+    ,"contentVersion": "1.0.0.0"
+    ,"parameters": {
+         "IpSQL": {
+            "type": "array"
+            ,"defaultValue": ["5.5.5.11","5.5.5.12"]
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+
+        ,"ExtraDiskCount": {
+            "type": "int"
+            ,"defaultValue": 2
+            ,"minValue": 1
+			,"metadata": {
+				"description": "Specific number of SQL ips. for each ip, we will create a sql!"
+			}
+        }
+    }
+    ,"variables": {
+         "ADDR": "192.168.X.0/24" 
+		,"C": 20
+
+     ,"copy":[
+             {
+                "name": "L1"
+                ,"count": "[variables('C')]"
+                ,"input": {
+                     "DefaultSubnetIp":  "[replace(variables('ADDR'),'X',string(add(copyIndex('L1'),1)))]"
+					
+                }
+            }
+       ]
+
+
+	
+	}
+	
+	
+    ,"resources": [
+
+     
+    ]
+    ,"outputs": {
+        "result": {
+            "type": "array",
+            "value": "[variables('L1')]"
+        }
+    }
+}
+
