@@ -7,7 +7,7 @@ Esta feature do azure permite que você crie diversos ambientes usando um arquiv
 Se você não conhece a sintae, recomendo começar pela documentação em:  
 https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-syntax
 
-Lá tem tutorias bem bacanas! Outra dica, é fazer o deploy pelo portal exportar o template!  Explore-o!
+Lá tem tutorias bem bacanas! Outra dica, é fazer o deploy pelo portal exportar o template que ele gera!  Explore-o!
 Isso vai te ajudar a aprender também!
 
 ## Organização
@@ -20,10 +20,10 @@ Se as instruções não estiverem claras ou estiver faltando algo, abra uma Issu
 
 ## Como testar os templates
 
-Você pode testar estes templates copiando eles para o portal do Azure. No serviço `Templates`, você vai encontrar as opções para fazer o upload de um arquivo ou mesmo copiar e colar!
+Você pode testar estes templates copiando eles para o portal do Azure. Procure por `Templates`, e então você vai encontrar as opções para fazer o upload de um arquivo ou mesmo copiar e colar!
 Porém, isso pode ficar chato se você precisar fazer testes frequentes (caso queria modificar, por exemplo).
 
-Por isso, recomendo usaro [módulo do Azure] para powershell (chamado `Az`)
+Por isso, recomendo usar o [módulo do Azure] para powershell (chamado `Az`)
 
 O cmdlet que te permitirá fazer isso é o [Test-AzResourceGroupDeployment]:
 
@@ -86,5 +86,10 @@ Por Exemplo, no caso de uma imagem SQL Server:
 * A SKU é a edição (developer, enterprise, etc.). Por exemplo, para a offer `sql2019-ws2019`, temos uma SKU `sqldev` (SQL Serverloper)
 * A imagem é a versão sql 2019 developer com algum cumulative update aplicado. Geralmente será o build number 15.XX.YYYY (consulte sempre com os comandos acima para obter um valor atualizado)
 
+
+Se você quiser, pode usar o site [https://az-vm-image.info/] para uma interface mais amigável!
+
+
 [módulo do Azure]: https://docs.microsoft.com/en-us/powershell/azure/install-az-ps
 [Test-AzResourceGroupDeployment]: https://docs.microsoft.com/en-us/powershell/module/az.resources/test-azresourcegroupdeployment?view=azps-3.3.0
+[https://az-vm-image.info/]: https://az-vm-image.info/
