@@ -174,9 +174,6 @@
 
         ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
 		
-        ,"VirtualNetwork-SubNetDefault-Name": "default"
-		,"NetworkRangeDefault": "192.168.0.0/24"
-		  
         ,"VirtualNetwork-SubNetCustom-Name": "custom"
         ,"SubNetCustomID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetCustom-Name'))]"
 	    ,"NetworkRangeCustom": "[parameters('NetworkRange')]"
@@ -271,19 +268,11 @@
             ,"properties": {
                 "addressSpace": {
                     "addressPrefixes": [
-                        "[variables('NetworkRangeDefault')]"
-						,"[variables('NetworkRangeCustom')]"
+                        "[variables('NetworkRangeCustom')]"
                     ]
                 }
                 ,"subnets": [
 					{
-                        "name": "[variables('VirtualNetwork-SubNetDefault-Name')]",
-                        "properties": {
-                            "addressPrefix": "[variables('NetworkRangeDefault')]"
-
-                        }
-                    }
-                    ,{
                         "name": "[variables('VirtualNetwork-SubNetCustom-Name')]",
                         "properties": {
                             "addressPrefix": "[variables('NetworkRangeCustom')]"
