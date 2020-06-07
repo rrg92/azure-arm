@@ -558,7 +558,7 @@
                         "autoUpgradeMinorVersion": true,
                         "settings": {
                             "fileUris": [
-                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/SQLAD/scripts/CreateDomain.ps1"
+                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/sql-ad/scripts/CreateDomain.ps1"
                             ]
                         },
                         "protectedSettings": {
@@ -663,7 +663,7 @@
                         "autoUpgradeMinorVersion": true,
                         "settings": {
                             "fileUris": [
-                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/SQLAD/scripts/JoinDomain.ps1"
+                                "https://raw.githubusercontent.com/rrg92/azure-arm/master/sql-ad/scripts/JoinDomain.ps1"
                             ]
                         },
                         "protectedSettings": {
