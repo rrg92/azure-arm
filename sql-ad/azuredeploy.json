@@ -175,7 +175,6 @@
         ,"VirtualNetwork-Name": "[concat(variables('BaseName'),'-','NETWORK')]"
 		
         ,"VirtualNetwork-SubNetDefault-Name": "default"
-		,"SubNetDefaultID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('VirtualNetwork-Name'), variables('VirtualNetwork-SubNetDefault-Name'))]"
 		,"NetworkRangeDefault": "192.168.0.0/24"
 		  
         ,"VirtualNetwork-SubNetCustom-Name": "custom"
@@ -188,8 +187,12 @@
         ,"PublicIpType": "Dynamic"
         ,"ResourcesLocation": "[resourceGroup().location]"
 
-        ,"BillingProfile":{
-            "maxPrice": -1
+        ,"ADBillingProfile":{
+            "maxPrice": "[parameters('ADSpotMaxPrice')]"
+        }
+
+        ,"SQLBillingProfile":{
+            "maxPrice": "[parameters('SQLSpotMaxPrice')]"
         }
 
          
@@ -198,10 +201,7 @@
         ,"AD-InterfacePip": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP-AD')]"
         ,"AD-InterfacePip-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AD-InterfacePip'))]"
         ,"AD-DnsName": "[concat(variables('BaseName'),'-','ad')]"
-        ,"AD-InterfaceInternal": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-AD')]"
-        ,"AD-InterfaceInternal-Id": "[resourceId('Microsoft.Network/networkInterfaces', variables('AD-InterfaceInternal'))]"
         ,"AD-InternalIP": "[parameters('IpAD')]"
-        ,"AD-DefaultSubNetIP": "192.168.0.10"
         ,"AD-MachineName":  "AD"
         ,"AD-VmName":  "[concat(variables('BaseName'),'-',variables('AD-MachineName'))]"
         ,"AD-MachineImage": {
@@ -235,8 +235,6 @@
                     ,"InterfacePipName": "[concat(variables('BaseName'),'-','NETINTERFACE-PIP-SQL',copyIndex('SQLSingleConfigs',1))]"
                     ,"InterfacePipId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-PIP-SQL',copyIndex('SQLSingleConfigs',1)))]"
                     ,"DnsName": "[concat(variables('BaseName'),'-','sql',copyIndex('SQLSingleConfigs',1))]"
-                    ,"InterfaceInternalName": "[concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-SQL',copyIndex('SQLSingleConfigs',1))]"
-                    ,"InterfaceInternalId": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('BaseName'),'-','NETINTERFACE-INTERNAL-SQL',copyIndex('SQLSingleConfigs',1)))]"
                     ,"InternalIP": "[parameters('IpSQL')[copyIndex('SQLSingleConfigs')]]"
                     ,"MachineName": "[concat('SQL',copyIndex('SQLSingleConfigs',1))]"
                     ,"VmName":  "[concat(variables('BaseName'),'-','SQL',copyIndex('SQLSingleConfigs',1))]"
@@ -354,36 +352,13 @@
                         "name": "IpConfigPip"
                         ,"properties": {
 							"subnet": {
-                                    "id": "[variables('SubNetDefaultID')]"
+                                    "id": "[variables('SubNetCustomID')]"
                                 }
 							,"privateIPAllocationMethod": "Static"
-                            ,"privateIPAddress": "[variables('AD-DefaultSubNetIP')]"
+                            ,"privateIPAddress": "[variables('AD-InternalIP')]"
                             ,"publicIpAddress": {
                                 "id": "[variables('AD-PublicIP-Id')]"
                             }
-                        }
-                    }
-                ]
-            }
-        }
-        ,{
-            "name": "[variables('AD-InterfaceInternal')]",
-            "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2019-07-01",
-            "location": "[variables('ResourcesLocation')]",
-            "dependsOn": [
-                "[variables('VirtualNetwork-Name')]"
-            ],
-            "properties": {
-                "ipConfigurations": [
-                    {
-                        "name": "IpConfigInternal"
-                        ,"properties": {
-                            "subnet": {
-                                "id": "[variables('SubNetCustomID')]"
-                            }
-                            ,"privateIPAllocationMethod": "Static"
-                            ,"privateIPAddress": "[variables('AD-InternalIP')]"
                         }
                     }
                 ]
@@ -406,41 +381,13 @@
                         "name": "IpConfigPip"
                         ,"properties": {
                            "subnet": {
-                                    "id": "[variables('SubNetDefaultID')]"
+                                    "id": "[variables('SubNetCustomID')]"
                                 }
-							,"privateIPAllocationMethod": "Static"
-                            ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].IpDefaultSubNet]"
+                            ,"privateIPAllocationMethod": "Static"
+                            ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].InternalIP]"
                             ,"publicIpAddress": {
                                 "id": "[variables('SQLSingleConfigs')[copyIndex()].PublicIpId]"
                             }
-                        }
-                    }
-                ]
-            }
-
-            ,"copy":{
-                 "name": "SQLInterfacePipLoop"
-                ,"count": "[variables('SQLCount')]"
-            }
-        }
-        ,{
-            "name": "[variables('SQLSingleConfigs')[copyIndex()].InterfaceInternalName]",
-            "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2019-07-01",
-            "location": "[variables('ResourcesLocation')]",
-            "dependsOn": [
-                "[variables('VirtualNetwork-Name')]"
-            ],
-            "properties": {
-                "ipConfigurations": [
-                    {
-                        "name": "IpConfigInternal"
-                        ,"properties": {
-                            "subnet": {
-                                "id": "[variables('SubNetCustomID')]"
-                            }
-                            ,"privateIPAllocationMethod": "Static"
-                            ,"privateIPAddress": "[variables('SQLSingleConfigs')[copyIndex()].InternalIP]"
                         }
                     }
                 ]
@@ -452,16 +399,11 @@
             }
 
             ,"copy":{
-                 "name": "SQLInterfaceInternalLoop"
+                 "name": "SQLInterfacePipLoop"
                 ,"count": "[variables('SQLCount')]"
             }
         }
 
-
-
-
-
-        
         ,{
             "name": "[variables('AllSQLDisks')[copyIndex()].DiskName]",
             "type": "Microsoft.Compute/disks",
@@ -490,8 +432,7 @@
             "apiVersion": "2019-07-01",
             "location": "[variables('ResourcesLocation')]",
             "dependsOn": [
-                "[variables('AD-InterfaceInternal')]"
-                ,"[variables('AD-InterfacePip')]"
+                "[variables('AD-InterfacePip')]"
             ],
             "properties": {
                 "hardwareProfile": {
@@ -515,12 +456,6 @@
                                 "primary": true
                             }
                         }
-                        ,{
-                            "id": "[variables('AD-InterfaceInternal-Id')]"
-                            ,"properties": {
-                                "primary": false
-                            }
-                        }
                     ]
                 }
                 
@@ -536,7 +471,7 @@
                 
                 ,"priority": "[parameters('ADMachinePriority')]"
                 ,"evictionPolicy": "[if(equals(parameters('ADMachinePriority'),'Spot'),'Deallocate','')]"
-                ,"billingProfile": "[if(equals(parameters('ADMachinePriority'),'Spot'),variables('BillingProfile'),json('null'))]"
+                ,"billingProfile": "[if(equals(parameters('ADMachinePriority'),'Spot'),variables('ADBillingProfile'),json('null'))]"
             }
 
             ,"resources": [
@@ -577,8 +512,7 @@
             "apiVersion": "2019-07-01",
             "location": "[variables('ResourcesLocation')]",
             "dependsOn": [
-                "SQLInterfaceInternalLoop"
-                ,"SQLInterfacePipLoop"
+                 "SQLInterfacePipLoop"
                 ,"SQLExtraDiskLoop"
                 ,"[resourceId('Microsoft.Compute/virtualMachines/extensions',variables('AD-VmName'),'powershell-CreateDomain')]"
             ],
@@ -619,12 +553,6 @@
                                 "primary": true
                             }
                         }
-                        ,{
-                            "id": "[variables('SQLSingleConfigs')[copyIndex()].InterfaceInternalId]"
-                            ,"properties": {
-                                "primary": false
-                            }
-                        }
                     ]
                 }
                 
@@ -640,7 +568,7 @@
                 
                 ,"priority": "[parameters('SQLMachinePriority')]"
                 ,"evictionPolicy": "[if(equals(parameters('SQLMachinePriority'),'Spot'),'Deallocate','')]"
-                ,"billingProfile": "[if(equals(parameters('SQLMachinePriority'),'Spot'),variables('BillingProfile'),json('null'))]"
+                ,"billingProfile": "[if(equals(parameters('SQLMachinePriority'),'Spot'),variables('SQLBillingProfile'),json('null'))]"
             }
 
 
